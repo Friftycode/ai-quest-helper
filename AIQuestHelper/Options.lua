@@ -188,11 +188,10 @@ local function build(f)
 	local pages, buttons, current = {}, {}, 1
 	local function select(index)
 		for k, page in ipairs(pages) do
-			page:SetShown(k == index)
-			if buttons[k].LockHighlight then
-				if k == index then buttons[k]:LockHighlight() else buttons[k]:UnlockHighlight() end
-			end
-			buttons[k]:SetEnabled(k ~= index)
+			local on = k == index
+			page:SetShown(on)
+			buttons[k].label:SetTextColor(on and 1 or 0.6, on and 0.82 or 0.6, on and 0 or 0.6)
+			buttons[k].underline:SetShown(on)
 		end
 		for _, fn in ipairs(pages[index].refresh) do fn() end
 		current = index
@@ -200,20 +199,31 @@ local function build(f)
 
 	local x = LEFT
 	for k, tab in ipairs(TABS) do
-		local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-		b:SetSize(110, 26)
-		b:SetPoint("TOPLEFT", x, -48)
-		b:SetText(tab[1])
+		local b = CreateFrame("Button", nil, f)
+		b.label = b:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+		b.label:SetPoint("CENTER", 0, 2)
+		b.label:SetText(tab[1])
+		local w = math.max(70, b.label:GetStringWidth() + 32)
+		b:SetSize(w, 30)
+		b:SetPoint("BOTTOMLEFT", f, "TOPLEFT", x, -82)
+		local hl = b:CreateTexture(nil, "HIGHLIGHT")
+		hl:SetColorTexture(1, 1, 1, 0.06)
+		hl:SetAllPoints()
+		b.underline = b:CreateTexture(nil, "OVERLAY")
+		b.underline:SetColorTexture(1, 0.82, 0, 1)
+		b.underline:SetHeight(2)
+		b.underline:SetPoint("BOTTOMLEFT", 6, 0)
+		b.underline:SetPoint("BOTTOMRIGHT", -6, 0)
 		b:SetScript("OnClick", function() select(k) end)
 		buttons[k] = b
-		x = x + 114
+		x = x + w + 4
 		local page = newPage(f)
 		tab[2](page)
 		pages[k] = page
 	end
 
 	local line = f:CreateTexture(nil, "ARTWORK")
-	line:SetColorTexture(1, 0.82, 0, 0.25)
+	line:SetColorTexture(1, 1, 1, 0.15)
 	line:SetHeight(1)
 	line:SetPoint("TOPLEFT", LEFT, -82)
 	line:SetPoint("TOPRIGHT", -LEFT, -82)
