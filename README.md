@@ -2,6 +2,12 @@
 
 A World of Warcraft: Forever (Classic+) addon that turns what is on your screen into clean, AI-friendly text. Click the small note icon, press Ctrl+C, and paste the quest, dialog, bags or gear into any AI assistant for help.
 
+## Screenshots
+
+![Quest log](assets/screenshots/quest-log.png)
+![Quest details](assets/screenshots/quest-details.png)
+![Settings](assets/screenshots/settings.png)
+
 ## Features
 
 **Copy to clipboard**
@@ -36,7 +42,7 @@ A World of Warcraft: Forever (Classic+) addon that turns what is on your screen 
 | `/qc gear` | Equipped gear |
 | `/qc done` | Completed quest IDs |
 | `/qc ready` | Quests ready to turn in |
-| `/qc config` | Settings |
+| `/qc config` | Settings (Options, AddOns, AI Quest Helper) |
 | `/qc save` | Save a snapshot and reload |
 
 Keybindings for copy, bags, gear and the target button are under Key Bindings, AddOns.
