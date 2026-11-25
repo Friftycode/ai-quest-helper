@@ -278,6 +278,26 @@ function ns.bindText(party)
 	return k or "Not set"
 end
 
+local NO_TARGET = "Nothing to target nearby"
+
+-- A click that finds nothing makes the game print "You can't do that right now."
+-- Hide game errors right after a click and show our own message instead.
+local errFilter
+local function hookErrors()
+	if errFilter or not UIErrorsFrame then return end
+	local orig = UIErrorsFrame:GetScript("OnEvent")
+	if not orig then return end
+	errFilter = true
+	UIErrorsFrame:SetScript("OnEvent", function(self, event, ...)
+		if event == "UI_ERROR_MESSAGE" and ns.tarClickTime and GetTime() - ns.tarClickTime < 0.4 then return end
+		return orig(self, event, ...)
+	end)
+end
+
+local function noTarget()
+	if UIErrorsFrame then UIErrorsFrame:AddMessage(NO_TARGET, 1, 0.1, 0.1, 1) end
+end
+
 local function flash(ok)
 	if not btn then return end
 	if ok == "tapped" then
@@ -367,11 +387,13 @@ function ns.tarJudge()
 		or not got and ("target is not a quest mob here: " .. tostring(UnitName("target")))
 		or tapped and "tagged or already hurt"
 		or "ok"
+	if not UnitExists("target") then noTarget() end
 	if tapped then flash("tapped") else flash(got) end
 	if UnitExists("target") and not UnitIsDead("target") and PlaySound then pcall(PlaySound, 8959) end
 end
 
 local function build()
+	hookErrors()
 	local f = CreateFrame("Button", "AIQuestHelperTarget", UIParent, "SecureActionButtonTemplate")
 	f:SetSize(40, 40)
 	f.names, f.pnames = {}, {}
@@ -433,6 +455,7 @@ local function build()
 
 	f:SetScript("PreClick", function(self, button)
 		self.party = button == "RightButton"
+		ns.tarClickTime = GetTime()
 		if self.moving and not InCombatLockdown() then self:SetAttribute("type", nil) end
 	end)
 	f:SetScript("PostClick", function(self)
