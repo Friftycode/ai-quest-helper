@@ -2,7 +2,7 @@ local _, ns = ...
 local call, clean = ns.call, ns.clean
 
 local ANSWER_FORMAT = "\n## How to answer\n"
-	.. "- Research the quest online first; do not answer from memory.\n"
+	.. "- Research the quest online first; do not answer from memory. Use WoW Forever sources (WoW Forever databases and guides, e.g. wowhead.com/forever); Forever differs from Classic, so say so if only Classic info exists.\n"
 	.. "- Very short. Only quests that belong to the goal we talk about (for example one dungeon), not other quests in the same area.\n"
 	.. "- One block per quest, in this exact markdown format:\n\n"
 	.. "### Quest name\n"
@@ -10,6 +10,7 @@ local ANSWER_FORMAT = "\n## How to answer\n"
 	.. "**Objective:** what to do\n"
 	.. "**NPC:** who to turn in to (x, y) (only when the objectives are done or the next step is the NPC)\n"
 	.. "**Use item in bag:** item name (only when the quest needs an item from the bags)\n"
+	.. "**Buy on AH:** item names (always when quest items can be bought on the Auction House)\n"
 	.. "**Respawn:** respawn time, or that it spawns again (only for a single named mob or object)\n\n"
 	.. "- No /tar or target macros unless asked. No explanations, routes or lore."
 
