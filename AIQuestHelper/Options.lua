@@ -34,93 +34,85 @@ local SECTIONS = {
 	} },
 }
 
-local function build()
-	local f = CreateFrame("Frame", "AIQuestHelperOptions", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-	f:SetSize(300, 10)
-	f:SetPoint("CENTER")
-	f:SetFrameStrata("DIALOG")
-	f:SetClampedToScreen(true)
-	f:EnableMouse(true)
-	f:SetMovable(true)
-	f:RegisterForDrag("LeftButton")
-	f:SetScript("OnDragStart", f.StartMoving)
-	f:SetScript("OnDragStop", f.StopMovingOrSizing)
-	if f.SetBackdrop then
-		f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-		f:SetBackdropColor(0.06, 0.06, 0.08, 0.94)
-		f:SetBackdropBorderColor(0.25, 0.25, 0.3, 1)
-	end
-	tinsert(UISpecialFrames, "AIQuestHelperOptions")
+local COLUMN_W = 340
 
-	local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	title:SetPoint("TOPLEFT", 14, -12)
+local function build(f)
+	local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	title:SetPoint("TOPLEFT", 16, -16)
 	title:SetText("AI Quest Helper")
 
-	local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
-	close:SetSize(24, 24)
-	close:SetPoint("TOPRIGHT", -2, -2)
-	close:SetFrameLevel(f:GetFrameLevel() + 10)
-	close:SetScript("OnClick", function() f:Hide() end)
-	f:EnableKeyboard(true)
-	f:SetScript("OnKeyDown", function(self, key)
-		if key == "ESCAPE" then
-			pcall(self.SetPropagateKeyboardInput, self, false)
-			self:Hide()
-		else
-			pcall(self.SetPropagateKeyboardInput, self, true)
-		end
-	end)
-	pcall(f.SetPropagateKeyboardInput, f, true)
-	-- Keyboard input cannot be passed on safely in combat: close the window when combat starts
-	f:RegisterEvent("PLAYER_REGEN_DISABLED")
-	f:SetScript("OnEvent", function(self) self:Hide() end)
-
-	local y = -38
 	f.checks = {}
-	for _, section in ipairs(SECTIONS) do
-		local h = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-		h:SetPoint("TOPLEFT", 14, y)
-		h:SetText(section[1]:upper())
-		y = y - 16
-		for _, item in ipairs(section[2]) do
-			local cb = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
-			cb:SetSize(22, 22)
-			cb:SetPoint("TOPLEFT", 10, y)
-			local text = cb.Text or cb.text or cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-			text:ClearAllPoints()
-			text:SetPoint("LEFT", cb, "RIGHT", 2, 0)
-			text:SetFontObject("GameFontHighlightSmall")
-			text:SetText(item[2])
-			cb.key = item[1]
-			cb:SetScript("OnClick", function(self) ns.setOpt(self.key, self:GetChecked() and true or false) end)
-			f.checks[#f.checks + 1] = cb
-			y = y - 22
-		end
-		y = y - 8
+	local x, y
+
+	local function check(label, key)
+		local cb = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
+		cb:SetSize(24, 24)
+		cb:SetPoint("TOPLEFT", x - 4, y)
+		local text = cb.Text or cb.text or cb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+		text:ClearAllPoints()
+		text:SetPoint("LEFT", cb, "RIGHT", 2, 0)
+		text:SetFontObject("GameFontHighlight")
+		text:SetText(label)
+		y = y - 24
+		return cb
 	end
 
-	local sizeLabel = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	sizeLabel:SetPoint("TOPLEFT", 16, y - 4)
+	local function section(name)
+		local h = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		h:SetPoint("TOPLEFT", x, y)
+		h:SetText(name)
+		y = y - 20
+	end
+
+	local function stepRow(width)
+		local l = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+		l:SetPoint("TOPLEFT", x, y - 4)
+		local function button(txt, offset, fn)
+			local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+			b:SetSize(width or 24, 20)
+			b:SetPoint("TOPLEFT", x + COLUMN_W - offset, y)
+			b:SetText(txt)
+			b:SetScript("OnClick", fn)
+			return b
+		end
+		y = y - 28
+		return l, button
+	end
+
+	local function sectionList(list)
+		for _, sec in ipairs(list) do
+			section(sec[1])
+			for _, item in ipairs(sec[2]) do
+				local cb = check(item[2])
+				cb.key = item[1]
+				cb:SetScript("OnClick", function(self) ns.setOpt(self.key, self:GetChecked() and true or false) end)
+				f.checks[#f.checks + 1] = cb
+			end
+			y = y - 10
+		end
+	end
+
+	x, y = 16, -52
+	sectionList({ SECTIONS[1], SECTIONS[2], SECTIONS[3] })
+
+	x, y = 16 + COLUMN_W + 40, -52
+	sectionList({ SECTIONS[4], SECTIONS[5] })
+
+	section("Display")
+	local sizeLabel, sizeButton = stepRow()
 	local function sizeText() sizeLabel:SetText(string.format("Map icon size: %d%%", math.floor((ns.opt("mapPinScale") or 1) * 100 + 0.5))) end
-	sizeText()
-	local function stepper(txt, delta, x)
-		local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-		b:SetSize(22, 18)
-		b:SetPoint("TOPRIGHT", x, y)
-		b:SetText(txt)
-		b:SetScript("OnClick", function()
+	local function resize(delta)
+		return function()
 			local v = math.max(0.6, math.min(2, (ns.opt("mapPinScale") or 1) + delta))
 			ns.setOpt("mapPinScale", math.floor(v * 10 + 0.5) / 10)
 			sizeText()
-		end)
+		end
 	end
-	stepper("-", -0.1, -40)
-	stepper("+", 0.1, -14)
-	y = y - 30
+	sizeButton("-", 54, resize(-0.1))
+	sizeButton("+", 26, resize(0.1))
 
 	local MARKERS = { [0] = "None", "Star", "Circle", "Diamond", "Triangle", "Moon", "Square", "Cross", "Skull" }
-	local mLabel = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	mLabel:SetPoint("TOPLEFT", 16, y - 4)
+	local mLabel, mButton = stepRow()
 	local mIcon = f:CreateTexture(nil, "OVERLAY")
 	mIcon:SetSize(16, 16)
 	mIcon:SetPoint("LEFT", mLabel, "RIGHT", 6, 0)
@@ -129,86 +121,69 @@ local function build()
 		mLabel:SetText("Target marker: " .. MARKERS[m])
 		if m > 0 then mIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_" .. m); mIcon:Show() else mIcon:Hide() end
 	end
-	markerText()
-	local function mStep(txt, delta, x)
-		local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-		b:SetSize(22, 18)
-		b:SetPoint("TOPRIGHT", x, y)
-		b:SetText(txt)
-		b:SetScript("OnClick", function()
-			local m = ((ns.opt("questTargetMarker") or 0) + delta) % 9
-			ns.setOpt("questTargetMarker", m)
+	local function marker(delta)
+		return function()
+			ns.setOpt("questTargetMarker", ((ns.opt("questTargetMarker") or 0) + delta) % 9)
 			markerText()
-		end)
+		end
 	end
-	mStep("<", -1, -40)
-	mStep(">", 1, -14)
-	f.markerText = markerText
-	y = y - 30
+	mButton("<", 54, marker(-1))
+	mButton(">", 26, marker(1))
 
-	local function keyRow(txt, party)
-		local l = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-		l:SetPoint("TOPLEFT", 16, y - 4)
-		local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-		b:SetSize(48, 18)
-		b:SetPoint("TOPRIGHT", -14, y)
-		b:SetText("Set")
-		b:SetScript("OnClick", function() if ns.showBindPrompt then ns.showBindPrompt(party) end end)
-		y = y - 24
-		return function() l:SetText(txt .. ": " .. (ns.bindText and ns.bindText(party) or "Not set")) end
-	end
-	local mineKey = keyRow("Key Mine", false)
-	local partyKey = keyRow("Key Party", true)
-	f.keyText = function() mineKey(); partyKey() end
-	ns.onBindChange = function() if f:IsShown() then f.keyText() end end
-	y = y - 6
-
-	local mm = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
-	mm:SetSize(22, 22)
-	mm:SetPoint("TOPLEFT", 10, y)
-	local mmText = mm.Text or mm.text or mm:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	mmText:ClearAllPoints()
-	mmText:SetPoint("LEFT", mm, "RIGHT", 2, 0)
-	mmText:SetFontObject("GameFontHighlightSmall")
-	mmText:SetText("Minimap icon")
+	local mm = check("Minimap icon")
 	mm:SetScript("OnClick", function(self)
 		local d = ns.db().minimap
 		d.hide = not self:GetChecked()
 		local icon = LibStub and LibStub("LibDBIcon-1.0", true)
 		if icon then if d.hide then icon:Hide(ADDON_NAME) else icon:Show(ADDON_NAME) end end
 	end)
-	f.minimapCheck = mm
-	y = y - 30
+	y = y - 10
+
+	section("Key bindings")
+	local function keyRow(txt, party)
+		local l, button = stepRow(60)
+		button("Set", 60, function() if ns.showBindPrompt then ns.showBindPrompt(party) end end)
+		return function() l:SetText(txt .. ": " .. (ns.bindText and ns.bindText(party) or "Not set")) end
+	end
+	local mineKey = keyRow("Target mine", false)
+	local partyKey = keyRow("Target party", true)
+	local function keyText() mineKey(); partyKey() end
+	ns.onBindChange = function() if f:IsVisible() then keyText() end end
+	y = y - 10
 
 	local ready = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-	ready:SetSize(272, 22)
-	ready:SetPoint("TOPLEFT", 14, y)
+	ready:SetSize(COLUMN_W, 24)
+	ready:SetPoint("TOPLEFT", x, y)
 	ready:SetText("Quests ready to turn in")
 	ready:SetScript("OnClick", function() ns.toggleReady() end)
-	y = y - 30
+	y = y - 34
 
-	local hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-	hint:SetPoint("TOPLEFT", 14, y)
-	hint:SetWidth(272)
-	hint:SetJustifyH("LEFT")
-	hint:SetText("/qc  copy what is open")
-	y = y - 26
+	local hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+	hint:SetPoint("TOPLEFT", x, y)
+	hint:SetText("/qc copies what is open. /qc help for all commands.")
 
-	f:SetHeight(-y)
-	f:SetScript("OnShow", function(self)
-		for _, cb in ipairs(self.checks) do cb:SetChecked(ns.opt(cb.key) and true or false) end
-		self.minimapCheck:SetChecked(not ns.db().minimap.hide)
+	f:HookScript("OnShow", function()
+		for _, cb in ipairs(f.checks) do cb:SetChecked(ns.opt(cb.key) and true or false) end
+		mm:SetChecked(not ns.db().minimap.hide)
 		sizeText()
-		self.markerText()
-		self.keyText()
+		markerText()
+		keyText()
 	end)
-	f:Hide()
-	return f
 end
 
+local category
+
 function ns.toggleOptions()
-	panel = panel or build()
-	panel:SetShown(not panel:IsShown())
+	if SettingsPanel and Settings and Settings.OpenToCategory and category then
+		if SettingsPanel:IsShown() and panel and panel:IsVisible() then
+			HideUIPanel(SettingsPanel)
+		else
+			Settings.OpenToCategory(category:GetID())
+		end
+	elseif InterfaceOptionsFrame_OpenToCategory and panel then
+		InterfaceOptionsFrame_OpenToCategory(panel)
+		InterfaceOptionsFrame_OpenToCategory(panel)
+	end
 end
 
 local menu
@@ -288,25 +263,14 @@ local function setupMinimap()
 end
 
 local function setupBlizzardPanel()
-	local p = CreateFrame("Frame")
-	p.name = "AI Quest Helper"
-	local t = p:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-	t:SetPoint("TOPLEFT", 16, -16)
-	t:SetText("AI Quest Helper")
-	local b = CreateFrame("Button", nil, p, "UIPanelButtonTemplate")
-	b:SetSize(160, 24)
-	b:SetPoint("TOPLEFT", t, "BOTTOMLEFT", 0, -12)
-	b:SetText("Open settings")
-	b:SetScript("OnClick", function()
-		if SettingsPanel and SettingsPanel:IsShown() then HideUIPanel(SettingsPanel) end
-		if InterfaceOptionsFrame and InterfaceOptionsFrame:IsShown() then HideUIPanel(InterfaceOptionsFrame) end
-		ns.toggleOptions()
-	end)
+	panel = CreateFrame("Frame")
+	panel.name = "AI Quest Helper"
+	build(panel)
 	if Settings and Settings.RegisterCanvasLayoutCategory then
-		local cat = Settings.RegisterCanvasLayoutCategory(p, "AI Quest Helper")
-		Settings.RegisterAddOnCategory(cat)
+		category = Settings.RegisterCanvasLayoutCategory(panel, "AI Quest Helper")
+		Settings.RegisterAddOnCategory(category)
 	elseif InterfaceOptions_AddCategory then
-		InterfaceOptions_AddCategory(p)
+		InterfaceOptions_AddCategory(panel)
 	end
 end
 
