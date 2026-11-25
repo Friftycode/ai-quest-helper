@@ -1,0 +1,94 @@
+name: keep-alive release
+
+# Same setup as mythicplus-timer-and-tools: runs daily in GitHub's cloud and
+# cuts a release only when the repo has been idle for 5+ days, so the addon
+# never shows as out of date. A manual run always releases.
+# The Classic Era Interface number is re-stamped from Blizzard's version feed;
+# the Forever number (16001) is left as is.
+on:
+  schedule:
+    - cron: "17 12 * * *"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (default: today's date, e.g. 2026.11.25)"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.check.outputs.go }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          DAYS=$(( ($(date -u +%s) - $(git log -1 --format=%ct)) / 86400 ))
+          echo "Days since last commit: $DAYS"
+          if [ "$DAYS" -ge 5 ]; then echo "go=true" >> "$GITHUB_OUTPUT"; else echo "go=false" >> "$GITHUB_OUTPUT"; fi
+
+  release:
+    needs: gate
+    if: ${{ needs.gate.outputs.go == 'true' }}
+    runs-on: ubuntu-latest
+    env:
+      CF_API_KEY: ${{ secrets.CF_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - run: npm ci
+      - run: npm test
+
+      - name: Resolve version and current interface
+        id: meta
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          [ -z "$VERSION" ] && VERSION="$(date -u +%Y.%-m.%-d)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "interface=$(node scripts/current-interface.mjs || true)" >> "$GITHUB_OUTPUT"
+
+      - name: Stamp version and interface, then re-test
+        run: |
+          node scripts/apply-release.mjs "${{ steps.meta.outputs.version }}" "${{ steps.meta.outputs.interface }}"
+          npm test
+
+      - name: Commit, tag, and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain)" ]; then
+            git commit -am "release: ${{ steps.meta.outputs.version }}"
+            git push
+          fi
+          TAG="v${{ steps.meta.outputs.version }}"
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already on origin."
+          else
+            git tag -a "$TAG" -m "$TAG"
+            git push origin "$TAG"
+          fi
+
+      - name: Upload to CurseForge
+        if: ${{ env.CF_API_KEY != '' }}
+        uses: BigWigsMods/packager@master
+        with:
+          args: "-n :{package-name}-{project-version}.zip"
