@@ -34,141 +34,191 @@ local SECTIONS = {
 	} },
 }
 
-local COLUMN_W = 340
+local LEFT, TOP, ROW, CONTROL_X = 20, -96, 28, 300
 
-local function build(f)
-	local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-	title:SetPoint("TOPLEFT", 16, -16)
-	title:SetText("AI Quest Helper")
+local function newPage(parent)
+	local page = CreateFrame("Frame", nil, parent)
+	page:SetPoint("TOPLEFT")
+	page:SetPoint("BOTTOMRIGHT")
+	page:Hide()
+	page.y = TOP
+	page.refresh = {}
+	return page
+end
 
-	f.checks = {}
-	local x, y
+local function heading(page, text)
+	local h = page:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	h:SetPoint("TOPLEFT", LEFT, page.y)
+	h:SetText(text)
+	page.y = page.y - 24
+end
 
-	local function check(label, key)
-		local cb = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
-		cb:SetSize(24, 24)
-		cb:SetPoint("TOPLEFT", x - 4, y)
-		local text = cb.Text or cb.text or cb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-		text:ClearAllPoints()
-		text:SetPoint("LEFT", cb, "RIGHT", 2, 0)
-		text:SetFontObject("GameFontHighlight")
-		text:SetText(label)
-		y = y - 24
-		return cb
+local function check(page, label, get, set)
+	local cb = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
+	cb:SetSize(24, 24)
+	cb:SetPoint("TOPLEFT", LEFT - 4, page.y + 2)
+	local text = cb.Text or cb.text or cb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	text:ClearAllPoints()
+	text:SetPoint("LEFT", cb, "RIGHT", 4, 0)
+	text:SetFontObject("GameFontHighlight")
+	text:SetText(label)
+	cb:SetScript("OnClick", function(self) set(self:GetChecked() and true or false) end)
+	page.refresh[#page.refresh + 1] = function() cb:SetChecked(get() and true or false) end
+	page.y = page.y - ROW
+end
+
+local function optionChecks(page, list)
+	for _, item in ipairs(list) do
+		local key = item[1]
+		check(page, item[2], function() return ns.opt(key) end, function(v) ns.setOpt(key, v) end)
 	end
+	page.y = page.y - 8
+end
 
-	local function section(name)
-		local h = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-		h:SetPoint("TOPLEFT", x, y)
-		h:SetText(name)
-		y = y - 20
+-- A label with buttons to its right on the same line; returns the label.
+local function controlRow(page, buttons)
+	local l = page:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+	l:SetPoint("TOPLEFT", LEFT, page.y - 4)
+	local x = CONTROL_X
+	for _, b in ipairs(buttons) do
+		local btn = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+		btn:SetSize(b.width or 26, 22)
+		btn:SetPoint("TOPLEFT", x, page.y)
+		btn:SetText(b.text)
+		btn:SetScript("OnClick", b.click)
+		x = x + (b.width or 26) + 4
 	end
+	page.y = page.y - ROW - 4
+	return l
+end
 
-	local function stepRow(width)
-		local l = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-		l:SetPoint("TOPLEFT", x, y - 4)
-		local function button(txt, offset, fn)
-			local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-			b:SetSize(width or 24, 20)
-			b:SetPoint("TOPLEFT", x + COLUMN_W - offset, y)
-			b:SetText(txt)
-			b:SetScript("OnClick", fn)
-			return b
-		end
-		y = y - 28
-		return l, button
-	end
+local MARKERS = { [0] = "None", "Star", "Circle", "Diamond", "Triangle", "Moon", "Square", "Cross", "Skull" }
 
-	local function sectionList(list)
-		for _, sec in ipairs(list) do
-			section(sec[1])
-			for _, item in ipairs(sec[2]) do
-				local cb = check(item[2])
-				cb.key = item[1]
-				cb:SetScript("OnClick", function(self) ns.setOpt(self.key, self:GetChecked() and true or false) end)
-				f.checks[#f.checks + 1] = cb
-			end
-			y = y - 10
-		end
-	end
+local function buildGeneral(page)
+	heading(page, "General")
+	check(page, "Minimap icon", function() return not ns.db().minimap.hide end, function(v)
+		ns.db().minimap.hide = not v
+		local icon = LibStub and LibStub("LibDBIcon-1.0", true)
+		if icon then if v then icon:Show(ADDON_NAME) else icon:Hide(ADDON_NAME) end end
+	end)
+	page.y = page.y - 8
+	heading(page, SECTIONS[5][1])
+	optionChecks(page, SECTIONS[5][2])
+	local hint = page:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+	hint:SetPoint("TOPLEFT", LEFT, page.y - 8)
+	hint:SetText("/qc copies what is open. /qc help lists all commands.")
+end
 
-	x, y = 16, -52
-	sectionList({ SECTIONS[1], SECTIONS[2], SECTIONS[3] })
+local function buildCopy(page)
+	heading(page, SECTIONS[1][1])
+	optionChecks(page, SECTIONS[1][2])
+	heading(page, SECTIONS[3][1])
+	optionChecks(page, SECTIONS[3][2])
+end
 
-	x, y = 16 + COLUMN_W + 40, -52
-	sectionList({ SECTIONS[4], SECTIONS[5] })
-
-	section("Display")
-	local sizeLabel, sizeButton = stepRow()
-	local function sizeText() sizeLabel:SetText(string.format("Map icon size: %d%%", math.floor((ns.opt("mapPinScale") or 1) * 100 + 0.5))) end
+local function buildMap(page)
+	heading(page, SECTIONS[2][1])
+	optionChecks(page, SECTIONS[2][2])
 	local function resize(delta)
 		return function()
 			local v = math.max(0.6, math.min(2, (ns.opt("mapPinScale") or 1) + delta))
 			ns.setOpt("mapPinScale", math.floor(v * 10 + 0.5) / 10)
-			sizeText()
+			page.sizeText()
 		end
 	end
-	sizeButton("-", 54, resize(-0.1))
-	sizeButton("+", 26, resize(0.1))
-
-	local MARKERS = { [0] = "None", "Star", "Circle", "Diamond", "Triangle", "Moon", "Square", "Cross", "Skull" }
-	local mLabel, mButton = stepRow()
-	local mIcon = f:CreateTexture(nil, "OVERLAY")
-	mIcon:SetSize(16, 16)
-	mIcon:SetPoint("LEFT", mLabel, "RIGHT", 6, 0)
-	local function markerText()
-		local m = ns.opt("questTargetMarker") or 0
-		mLabel:SetText("Target marker: " .. MARKERS[m])
-		if m > 0 then mIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_" .. m); mIcon:Show() else mIcon:Hide() end
+	local label = controlRow(page, { { text = "-", click = resize(-0.1) }, { text = "+", click = resize(0.1) } })
+	page.sizeText = function()
+		label:SetText(string.format("Map icon size: %d%%", math.floor((ns.opt("mapPinScale") or 1) * 100 + 0.5)))
 	end
+	page.refresh[#page.refresh + 1] = page.sizeText
+end
+
+local function buildQuests(page)
+	heading(page, SECTIONS[4][1])
+	optionChecks(page, SECTIONS[4][2])
+
+	local icon = page:CreateTexture(nil, "OVERLAY")
+	icon:SetSize(16, 16)
 	local function marker(delta)
 		return function()
 			ns.setOpt("questTargetMarker", ((ns.opt("questTargetMarker") or 0) + delta) % 9)
-			markerText()
+			page.markerText()
 		end
 	end
-	mButton("<", 54, marker(-1))
-	mButton(">", 26, marker(1))
-
-	local mm = check("Minimap icon")
-	mm:SetScript("OnClick", function(self)
-		local d = ns.db().minimap
-		d.hide = not self:GetChecked()
-		local icon = LibStub and LibStub("LibDBIcon-1.0", true)
-		if icon then if d.hide then icon:Hide(ADDON_NAME) else icon:Show(ADDON_NAME) end end
-	end)
-	y = y - 10
-
-	section("Key bindings")
-	local function keyRow(txt, party)
-		local l, button = stepRow(60)
-		button("Set", 60, function() if ns.showBindPrompt then ns.showBindPrompt(party) end end)
-		return function() l:SetText(txt .. ": " .. (ns.bindText and ns.bindText(party) or "Not set")) end
+	local label = controlRow(page, { { text = "<", click = marker(-1) }, { text = ">", click = marker(1) } })
+	icon:SetPoint("LEFT", label, "RIGHT", 6, 0)
+	page.markerText = function()
+		local m = ns.opt("questTargetMarker") or 0
+		label:SetText("Target marker: " .. MARKERS[m])
+		if m > 0 then icon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_" .. m); icon:Show() else icon:Hide() end
 	end
-	local mineKey = keyRow("Target mine", false)
-	local partyKey = keyRow("Target party", true)
-	local function keyText() mineKey(); partyKey() end
-	ns.onBindChange = function() if f:IsVisible() then keyText() end end
-	y = y - 10
+	page.refresh[#page.refresh + 1] = page.markerText
+	page.y = page.y - 8
 
-	local ready = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-	ready:SetSize(COLUMN_W, 24)
-	ready:SetPoint("TOPLEFT", x, y)
+	heading(page, "Key bindings")
+	local function keyRow(text, party)
+		local l = controlRow(page, { { text = "Set", width = 60, click = function() if ns.showBindPrompt then ns.showBindPrompt(party) end end } })
+		return function() l:SetText(text .. ": " .. (ns.bindText and ns.bindText(party) or "Not set")) end
+	end
+	local mine, party = keyRow("Target mine", false), keyRow("Target party", true)
+	local function keyText() mine(); party() end
+	page.refresh[#page.refresh + 1] = keyText
+	ns.onBindChange = function() if page:IsVisible() then keyText() end end
+	page.y = page.y - 8
+
+	local ready = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+	ready:SetSize(240, 24)
+	ready:SetPoint("TOPLEFT", LEFT, page.y)
 	ready:SetText("Quests ready to turn in")
 	ready:SetScript("OnClick", function() ns.toggleReady() end)
-	y = y - 34
+end
 
-	local hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisable")
-	hint:SetPoint("TOPLEFT", x, y)
-	hint:SetText("/qc copies what is open. /qc help for all commands.")
+local TABS = {
+	{ "General", buildGeneral },
+	{ "Copy", buildCopy },
+	{ "Map", buildMap },
+	{ "Quests", buildQuests },
+}
 
-	f:HookScript("OnShow", function()
-		for _, cb in ipairs(f.checks) do cb:SetChecked(ns.opt(cb.key) and true or false) end
-		mm:SetChecked(not ns.db().minimap.hide)
-		sizeText()
-		markerText()
-		keyText()
-	end)
+local function build(f)
+	local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	title:SetPoint("TOPLEFT", LEFT, -16)
+	title:SetText("AI Quest Helper")
+
+	local pages, buttons, current = {}, {}, 1
+	local function select(index)
+		for k, page in ipairs(pages) do
+			page:SetShown(k == index)
+			if buttons[k].LockHighlight then
+				if k == index then buttons[k]:LockHighlight() else buttons[k]:UnlockHighlight() end
+			end
+			buttons[k]:SetEnabled(k ~= index)
+		end
+		for _, fn in ipairs(pages[index].refresh) do fn() end
+		current = index
+	end
+
+	local x = LEFT
+	for k, tab in ipairs(TABS) do
+		local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+		b:SetSize(110, 26)
+		b:SetPoint("TOPLEFT", x, -48)
+		b:SetText(tab[1])
+		b:SetScript("OnClick", function() select(k) end)
+		buttons[k] = b
+		x = x + 114
+		local page = newPage(f)
+		tab[2](page)
+		pages[k] = page
+	end
+
+	local line = f:CreateTexture(nil, "ARTWORK")
+	line:SetColorTexture(1, 0.82, 0, 0.25)
+	line:SetHeight(1)
+	line:SetPoint("TOPLEFT", LEFT, -82)
+	line:SetPoint("TOPRIGHT", -LEFT, -82)
+
+	f:HookScript("OnShow", function() select(current) end)
 end
 
 local category
