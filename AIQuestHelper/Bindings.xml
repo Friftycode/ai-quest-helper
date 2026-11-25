@@ -1,0 +1,15 @@
+<Bindings>
+	<Binding name="AIQUESTHELPER_SMART" header="AIQUESTHELPER" category="ADDONS">
+		AIQuestHelper_Smart()
+	</Binding>
+	<Binding name="AIQUESTHELPER_BAGS" category="ADDONS">
+		AIQuestHelper_Bags()
+	</Binding>
+	<Binding name="AIQUESTHELPER_GEAR" category="ADDONS">
+		AIQuestHelper_Gear()
+	</Binding>
+	<Binding name="CLICK AIQuestHelperTarget:LeftButton" category="ADDONS">
+	</Binding>
+	<Binding name="CLICK AIQuestHelperTarget:RightButton" category="ADDONS">
+	</Binding>
+</Bindings>

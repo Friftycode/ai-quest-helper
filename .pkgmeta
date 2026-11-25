@@ -1,0 +1,18 @@
+package-as: AIQuestHelper
+
+enable-nolib-creation: no
+
+move-folders:
+  AIQuestHelper/AIQuestHelper: AIQuestHelper
+
+ignore:
+  - .github
+  - scripts
+  - test
+  - node_modules
+  - README.md
+  - CURSEFORGE.md
+  - package.json
+  - package-lock.json
+  - .gitattributes
+  - .pkgmeta

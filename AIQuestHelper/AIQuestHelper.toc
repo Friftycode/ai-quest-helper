@@ -1,0 +1,40 @@
+## Interface: 11509, 16001
+## Title: AI Quest Helper
+## Notes: Export quest, dialog, bag and book as AI-friendly text (Ctrl+C) and paste it into an AI for help. Zone levels, dungeons/raids, threat % and an arrow to the nearest unfinished quest. /aqh or /qc
+## Author: Friftycode
+## Version: 2.0.2
+## X-License: MIT
+## Category: Quests
+## IconTexture: Interface\Icons\INV_Misc_Note_02
+## OptionalDeps: Questie
+## SavedVariables: AIQuestHelperDB
+
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
+
+Data\Zones.lua
+Data\Instances.lua
+
+Util.lua
+Settings.lua
+Clipboard.lua
+QuestieData.lua
+Learning.lua
+Context.lua
+QuestLog.lua
+Dialog.lua
+Book.lua
+Bags.lua
+Gear.lua
+Icons.lua
+Snapshot.lua
+Commands.lua
+Map.lua
+Threat.lua
+Arrow.lua
+Target.lua
+Ready.lua
+Collapse.lua
+Options.lua
