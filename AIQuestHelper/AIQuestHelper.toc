@@ -4,6 +4,7 @@
 ## Author: Friftycode
 ## Version: 2.0.2
 ## X-License: MIT
+## X-Curse-Project-ID: 1830914
 ## Category: Quests
 ## IconTexture: Interface\Icons\INV_Misc_Note_02
 ## OptionalDeps: Questie
