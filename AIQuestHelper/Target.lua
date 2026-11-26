@@ -71,6 +71,32 @@ local function npcName(id)
 	return QDB and call(QDB.QueryNPCSingle, id, "name")
 end
 
+-- Questie's own Completed flag lags behind the quest log, so the game's
+-- objective list decides: a name that only appears in finished objectives
+-- (e.g. "Legashi Hellcaller slain" at 5/5) is not a target any more.
+local function gameObjectives(id)
+	local objs = C_QuestLog and call(C_QuestLog.GetQuestObjectives, id)
+	return type(objs) == "table" and objs or {}
+end
+
+local function plain(s)
+	return (type(s) == "string" and s or ""):lower():gsub("^%s*%d+%s*/%s*%d+%s*", "")
+end
+
+local function objectiveOpen(objs, name, index)
+	if index and type(objs[index]) == "table" and objs[index].finished then return false end
+	name = plain(name)
+	if name == "" then return true end
+	local seen, open = false, false
+	for _, o in ipairs(objs) do
+		if type(o) == "table" and plain(o.text):find(name, 1, true) then
+			seen = true
+			if not o.finished then open = true end
+		end
+	end
+	return open or not seen
+end
+
 local function collectAll()
 	local out, seen = {}, {}
 	local pMap = C_Map and call(C_Map.GetBestMapForUnit, "player")
@@ -90,10 +116,12 @@ local function collectAll()
 			local quest = haveQuestie and call(QDB.GetQuest, id)
 			local qname = (type(quest) == "table" and quest.name) or ("Quest " .. id)
 			local found = false
+			local gobj = gameObjectives(id)
 			if type(quest) == "table" then
 				for _, list in ipairs({ quest.Objectives or {}, quest.SpecialObjectives or {} }) do
 					for _, o in pairs(list) do
-						if type(o) == "table" and not o.Completed and type(o.spawnList) == "table" then
+						if type(o) == "table" and not o.Completed and type(o.spawnList) == "table"
+							and objectiveOpen(gobj, o.Description, list == quest.Objectives and o.Index or nil) then
 							for sid, sd in pairs(o.spawnList) do
 								if type(sd) == "table" and sd.Name and spawnsInZone(sd.Spawns, zone) then
 									found = true
@@ -110,9 +138,13 @@ local function collectAll()
 					local function npc(n)
 						if spawnsInZone(call(QDB.QueryNPCSingle, n, "spawns"), zone) then add(npcName(n), qname) end
 					end
-					for _, o in ipairs(obj[1] or {}) do if o[1] then npc(o[1]) end end
+					for _, o in ipairs(obj[1] or {}) do
+						if o[1] and objectiveOpen(gobj, o[2] or npcName(o[1])) then npc(o[1]) end
+					end
 					for _, o in ipairs(obj[3] or {}) do
-						for _, n in ipairs(o[1] and call(QDB.QueryItemSingle, o[1], "npcDrops") or {}) do npc(n) end
+						if o[1] and objectiveOpen(gobj, call(QDB.QueryItemSingle, o[1], "name")) then
+							for _, n in ipairs(call(QDB.QueryItemSingle, o[1], "npcDrops") or {}) do npc(n) end
+						end
 					end
 					for _, o in ipairs(obj[5] or {}) do
 						for _, n in ipairs(type(o[1]) == "table" and o[1] or {}) do npc(n) end

@@ -29,7 +29,15 @@ local function place(plate, fs)
 		holder:SetAllPoints(hb)
 		holder:SetFrameLevel(hb:GetFrameLevel() + 10)
 		fs:ClearAllPoints()
-		fs:SetPoint("TOPRIGHT", hb, "BOTTOMRIGHT", 0, -1)
+		-- Right of the level badge, where no cast bar or name can cover it.
+		local uf = plate.UnitFrame
+		local lvl = uf and (uf.LevelFrame or uf.levelText or uf.LevelText or (uf.healthBar and uf.healthBar.LevelText))
+		fs:SetJustifyH("LEFT")
+		if lvl and lvl.IsShown and lvl:IsShown() then
+			fs:SetPoint("LEFT", lvl, "RIGHT", 4, 0)
+		else
+			fs:SetPoint("LEFT", hb, "RIGHT", 32, 0)
+		end
 	else
 		holder:SetParent(plate)
 		holder:SetAllPoints(plate)

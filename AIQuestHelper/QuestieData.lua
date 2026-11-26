@@ -40,11 +40,19 @@ function ns.questIds()
 	return ids
 end
 
+-- Done when the game says so, when Questie's cache says so, or when every
+-- objective in the quest log is finished. Questie's cache can lag behind.
 function ns.isQuestDone(id)
+	if C_QuestLog and call(C_QuestLog.IsComplete, id) == true then return true end
 	local cache = ns.questieModules().logCache
 	local c = cache and call(cache.TryGetQuest, id)
-	if type(c) == "table" and c.isComplete ~= nil then return c.isComplete == 1 or c.isComplete == true end
-	return (C_QuestLog and call(C_QuestLog.IsComplete, id)) == true
+	if type(c) == "table" and (c.isComplete == 1 or c.isComplete == true) then return true end
+	local objs = C_QuestLog and call(C_QuestLog.GetQuestObjectives, id)
+	if type(objs) ~= "table" or #objs == 0 then return false end
+	for _, o in ipairs(objs) do
+		if type(o) ~= "table" or not o.finished then return false end
+	end
+	return true
 end
 
 local uiMapCache = {}
