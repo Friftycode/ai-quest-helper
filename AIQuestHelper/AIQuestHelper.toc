@@ -2,7 +2,7 @@
 ## Title: AI Quest Helper
 ## Notes: Export quest, dialog, bag and book as AI-friendly text (Ctrl+C) and paste it into an AI for help. Zone levels, dungeons/raids, threat % and an arrow to the nearest unfinished quest. /aqh or /qc
 ## Author: Friftycode
-## Version: 2.0.4
+## Version: 2.0.5
 ## X-License: MIT
 ## X-Curse-Project-ID: 1830914
 ## Category: Quests
