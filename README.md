@@ -2,6 +2,10 @@
 
 A World of Warcraft: Forever (Classic+) addon that turns what is on your screen into clean, AI-friendly text. Click the small note icon, press Ctrl+C, and paste the quest, dialog, bags or gear into any AI assistant for help.
 
+## Important: install Questie
+
+AI Quest Helper works best together with **Questie**. Questie provides where quest mobs, items and objects are, who gives and takes each quest, and the quest chain. Without Questie you still get the quest text, bags, gear and dialog, but no quest locations, so the quest arrow and the target button only know what you have seen yourself.
+
 ## Screenshots
 
 ![Quest log](assets/screenshots/quest-log.png)
