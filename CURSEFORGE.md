@@ -30,6 +30,6 @@ AI Quest Helper works best together with **Questie**. Questie provides where que
 
 **World map** - Zone levels, dungeon and raid entrances and a dungeon search.
 
-**Threat** - Threat % under enemy nameplates.
+**Threat** - Threat % next to the level on enemy nameplates.
 
 Type `/qc help` in game for all commands.

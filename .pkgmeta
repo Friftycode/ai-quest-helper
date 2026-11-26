@@ -16,3 +16,6 @@ ignore:
   - package-lock.json
   - .gitattributes
   - .pkgmeta
+
+optional-dependencies:
+  - questie
