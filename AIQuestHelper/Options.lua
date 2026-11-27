@@ -253,7 +253,6 @@ function ns.showMinimapMenu(owner)
 		MenuUtil.CreateContextMenu(owner, function(_, root)
 			root:CreateTitle("AI Quest Helper")
 			root:CreateButton("Ready to turn in", function() ns.toggleReady() end)
-			root:CreateButton("Copy gear (Ctrl+C)", function() if AIQuestHelper_Gear then AIQuestHelper_Gear() end end)
 			root:CreateButton("Save snapshot (reload)", saveSnapshot)
 			root:CreateButton("Settings", function() ns.toggleOptions() end)
 		end)
@@ -261,7 +260,7 @@ function ns.showMinimapMenu(owner)
 	end
 	if not menu then
 		menu = CreateFrame("Frame", "AIQuestHelperMinimapMenu", UIParent, BackdropTemplateMixin and "BackdropTemplate" or nil)
-		menu:SetSize(170, 108)
+		menu:SetSize(170, 83)
 		menu:SetFrameStrata("DIALOG")
 		menu:EnableMouse(true)
 		if menu.SetBackdrop then
@@ -279,9 +278,8 @@ function ns.showMinimapMenu(owner)
 			b:SetScript("OnClick", function() menu:Hide(); fn() end)
 		end
 		item(1, "Ready to turn in", function() ns.toggleReady() end)
-		item(2, "Copy gear (Ctrl+C)", function() if AIQuestHelper_Gear then AIQuestHelper_Gear() end end)
-		item(3, "Save snapshot (reload)", saveSnapshot)
-		item(4, "Settings", function() ns.toggleOptions() end)
+		item(2, "Save snapshot (reload)", saveSnapshot)
+		item(3, "Settings", function() ns.toggleOptions() end)
 		tinsert(UISpecialFrames, "AIQuestHelperMinimapMenu")
 		menu:SetScript("OnUpdate", function(self)
 			if not self:IsMouseOver(20, -20, -20, 20) and not (owner and owner:IsMouseOver()) then

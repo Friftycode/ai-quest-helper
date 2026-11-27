@@ -89,14 +89,38 @@ local function simple(key, frame, onClick, tip, x)
 	attach(key, frame, function(f) anchorLeftOfClose(makeIcon(key, f, onClick, tip), f, x) end)
 end
 
+-- Baganator replaces the bag windows with its own, one per frame group:
+-- Baganator_SingleViewBackpackViewFrame<group> and ..CategoryView...
+function ns.attachBaganator()
+	if not (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Baganator")) and not _G.Baganator then return end
+	for name, f in pairs(_G) do
+		if type(name) == "string" and name:find("^Baganator_") and name:find("BackpackViewFrame")
+			and type(f) == "table" and f.GetObjectType then
+			attach("baganator:" .. name, f, function(fr)
+				local b = makeIcon("bags", fr, bagClick, TIPS.bags, 18)
+				anchorLeftOfClose(b, fr, -2)
+			end)
+		end
+	end
+end
+
 local function tryAttach()
 	simple("quest", QuestFrame, ns.fromQuestDialog, TIPS.dialog)
 	simple("gossip", GossipFrame, ns.fromGossip, TIPS.dialog)
 	simple("itemText", ItemTextFrame, ns.fromItemText, TIPS.book)
 	simple("questLog", QuestLogFrame, questClick, TIPS.quest)
-	simple("gear", CharacterFrame, ns.fromGear, TIPS.gear)
+	attach("gear", PaperDollFrame or CharacterFrame, function(pd)
+		-- WoW Forever's character window draws its own art over CharacterFrame,
+		-- so the icon goes on the outermost frame and above everything in it.
+		local top = pd
+		while top:GetParent() and top:GetParent() ~= UIParent do top = top:GetParent() end
+		local b = makeIcon("gear", top, ns.fromGear, TIPS.gear, 20)
+		b:SetFrameStrata("HIGH")
+		anchorLeftOfClose(b, top, -2)
+	end)
 	simple("bags", ContainerFrame1, bagClick, TIPS.bags, 2)
 	simple("bagsCombined", ContainerFrameCombinedBags, bagClick, TIPS.bags, 2)
+	ns.attachBaganator()
 
 	attach("questMap", WorldMapFrame, function(f)
 		local border = f.BorderFrame or f
@@ -129,3 +153,8 @@ local events = CreateFrame("Frame")
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("ADDON_LOADED")
 events:SetScript("OnEvent", tryAttach)
+
+-- Baganator builds its windows the first time the bags open.
+for _, fn in ipairs({ "ToggleAllBags", "OpenAllBags", "ToggleBackpack", "OpenBackpack" }) do
+	if _G[fn] then hooksecurefunc(fn, function() C_Timer.After(0.2, ns.attachBaganator) end) end
+end

@@ -1,7 +1,8 @@
 local _, ns = ...
 
 local ICON = "Interface\\GossipFrame\\ActiveQuestIcon"
-local ROW_H, WIDTH, MAX_ROWS = 34, 380, 20
+local ROW_H, WIDTH, MAX_ROWS = 34, 560, 20
+local ZONE_X, ZONE_W, XP_W = 330, 150, 60
 local frame
 
 local function setWaypoint(e)
@@ -11,6 +12,26 @@ local function setWaypoint(e)
 		pcall(C_SuperTrack.SetSuperTrackedUserWaypoint, true)
 	end
 	if ok then print("|cff33ff99AI Quest Helper:|r waypoint set for " .. e.title) end
+end
+
+local function openMap(e)
+	if not (e.map and WorldMapFrame) then return end
+	if not WorldMapFrame:IsShown() then
+		if ToggleWorldMap then pcall(ToggleWorldMap) else pcall(ShowUIPanel, WorldMapFrame) end
+	end
+	if WorldMapFrame.SetMapID then pcall(WorldMapFrame.SetMapID, WorldMapFrame, e.map) end
+end
+
+local function zoneOf(e)
+	if e.zone then return e.zone end
+	local info = e.map and C_Map and C_Map.GetMapInfo and ns.call(C_Map.GetMapInfo, e.map)
+	return type(info) == "table" and info.name or nil
+end
+
+local function whoText(e)
+	if not e.who then return "|cff888888Turn-in not known|r" end
+	if e.x and e.y and not e.text then return e.who .. string.format(" (%.1f, %.1f)", e.x, e.y) end
+	return e.who
 end
 
 local function whereText(e)
@@ -48,6 +69,16 @@ local function build()
 	close:SetPoint("TOPRIGHT", -2, -2)
 	close:SetScript("OnClick", function() f:Hide() end)
 
+	local function head(text, x, w, justify)
+		local h = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+		h:SetPoint("TOPLEFT", 10 + x, -34)
+		h:SetWidth(w)
+		h:SetJustifyH(justify)
+		h:SetText(text)
+		return h
+	end
+	f.heads = { head("Quest", 22, 280, "LEFT"), head("Zone", ZONE_X, ZONE_W, "LEFT"), head("XP", WIDTH - 20 - XP_W - 4, XP_W, "RIGHT") }
+
 	f.empty = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	f.empty:SetPoint("TOPLEFT", 14, -40)
 	f.empty:SetText("No quests are ready to turn in.")
@@ -56,7 +87,7 @@ local function build()
 	for i = 1, MAX_ROWS do
 		local r = CreateFrame("Button", nil, f)
 		r:SetSize(WIDTH - 20, ROW_H)
-		r:SetPoint("TOPLEFT", 10, -34 - (i - 1) * ROW_H)
+		r:SetPoint("TOPLEFT", 10, -50 - (i - 1) * ROW_H)
 		local hl = r:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(); hl:SetColorTexture(1, 1, 1, 0.08)
 		r.icon = r:CreateTexture(nil, "ARTWORK")
 		r.icon:SetSize(16, 16)
@@ -64,20 +95,34 @@ local function build()
 		r.icon:SetTexture(ICON)
 		r.name = r:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		r.name:SetPoint("TOPLEFT", 22, -3)
-		r.name:SetPoint("RIGHT", -4, 0)
+		r.name:SetWidth(ZONE_X - 30)
+		r.name:SetWordWrap(false)
 		r.name:SetJustifyH("LEFT")
 		r.where = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 		r.where:SetPoint("TOPLEFT", 22, -19)
-		r.where:SetPoint("RIGHT", -4, 0)
+		r.where:SetWidth(ZONE_X - 30)
 		r.where:SetJustifyH("LEFT")
 		r.where:SetWordWrap(false)
-		r:SetScript("OnClick", function(self) if self.data then setWaypoint(self.data) end end)
+		r.zone = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		r.zone:SetPoint("TOPLEFT", ZONE_X, -4)
+		r.zone:SetWidth(ZONE_W)
+		r.zone:SetJustifyH("LEFT")
+		r.zone:SetWordWrap(false)
+		r.xp = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+		r.xp:SetPoint("TOPRIGHT", -4, -4)
+		r.xp:SetWidth(XP_W)
+		r.xp:SetJustifyH("RIGHT")
+		r:SetScript("OnClick", function(self)
+			if not self.data then return end
+			setWaypoint(self.data)
+			openMap(self.data)
+		end)
 		r:SetScript("OnEnter", function(self)
 			if not self.data then return end
 			GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 			GameTooltip:SetText(self.data.title)
 			GameTooltip:AddLine(whereText(self.data), 1, 1, 1, true)
-			if self.data.map and self.data.x then GameTooltip:AddLine("Click: set map waypoint", 0.6, 0.8, 1) end
+			if self.data.map then GameTooltip:AddLine("Click: open the map with a waypoint", 0.6, 0.8, 1) end
 			GameTooltip:Show()
 		end)
 		r:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -96,19 +141,22 @@ local function build()
 		local list = ns.readyQuests and ns.readyQuests() or {}
 		self.title:SetText("Ready to turn in (" .. #list .. ")")
 		self.empty:SetShown(#list == 0)
+		for _, h in ipairs(self.heads) do h:SetShown(#list > 0) end
 		local shown = math.min(#list, MAX_ROWS)
 		for i, r in ipairs(self.rows) do
 			local e = list[i]
 			r.data = e
 			if e then
 				r.name:SetText(string.format("[%s] %s", e.level or "?", e.title))
-				r.where:SetText((e.here and "|cff33ff99Here:|r " or "") .. whereText(e))
+				r.where:SetText((e.here and "|cff33ff99Here:|r " or "") .. whoText(e))
+				r.zone:SetText(zoneOf(e) or "|cff888888-|r")
+				r.xp:SetText(e.xp and e.xp > 0 and BreakUpLargeNumbers and BreakUpLargeNumbers(e.xp) or e.xp and e.xp > 0 and tostring(e.xp) or "|cff888888-|r")
 				r:Show()
 			else
 				r:Hide()
 			end
 		end
-		self:SetHeight(shown > 0 and (44 + shown * ROW_H) or 70)
+		self:SetHeight(shown > 0 and (60 + shown * ROW_H) or 70)
 	end
 	f:Hide()
 	return f

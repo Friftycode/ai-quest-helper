@@ -195,6 +195,7 @@ function ns.readyQuests()
 			if done then
 				local e = ns.turnInOf(id) or {}
 				e.id, e.title, e.level = id, title, level
+				e.xp = call(GetQuestLogRewardXP, id)
 				out[#out + 1] = e
 			end
 		end

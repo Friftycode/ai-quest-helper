@@ -69,7 +69,9 @@ end
 local function zoneName(area)
 	local ui = ns.uiMapOfArea(area)
 	local info = ui and C_Map and call(C_Map.GetMapInfo, ui)
-	return (type(info) == "table" and info.name) or ("area " .. tostring(area))
+	if type(info) == "table" and info.name then return info.name end
+	local n = C_Map and C_Map.GetAreaInfo and call(C_Map.GetAreaInfo, area)
+	return (type(n) == "string" and n ~= "" and n) or ("area " .. tostring(area))
 end
 
 local function playerArea()
