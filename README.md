@@ -11,6 +11,7 @@ AI Quest Helper works best together with **Questie**. Questie provides where que
 ![Quest log](assets/screenshots/quest-log.png)
 ![Quest details](assets/screenshots/quest-details.png)
 ![Ready to turn in](assets/screenshots/ready-to-turn-in.png)
+![Threat](assets/screenshots/threat.png)
 ![Settings](assets/screenshots/settings.png)
 
 ## Features
