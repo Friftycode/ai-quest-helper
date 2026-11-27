@@ -22,7 +22,7 @@ AI Quest Helper works best together with **Questie**. Questie provides where que
 
 **Target button** - Left click targets your quest mobs, right click your group's.
 
-**Ready to turn in** - A list of finished quests and where to hand them in.
+**Ready to turn in** - Finished quests with who, zone and XP. Click one to open the map with a waypoint.
 
 **Collapse all** - One button to fold or unfold the whole quest log.
 

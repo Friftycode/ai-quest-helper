@@ -10,6 +10,7 @@ AI Quest Helper works best together with **Questie**. Questie provides where que
 
 ![Quest log](assets/screenshots/quest-log.png)
 ![Quest details](assets/screenshots/quest-details.png)
+![Ready to turn in](assets/screenshots/ready-to-turn-in.png)
 ![Settings](assets/screenshots/settings.png)
 
 ## Features
@@ -28,7 +29,7 @@ AI Quest Helper works best together with **Questie**. Questie provides where que
 **Quest helpers**
 - Arrow to the nearest unfinished quest objective.
 - Target button: left click targets your quest mobs, right click your group's.
-- Popup with quests ready to turn in and where to hand them in.
+- Popup with quests ready to turn in: who, zone and XP. Click a quest to open the map with a waypoint.
 - One button to collapse or expand every header in the quest log.
 
 **Map and combat**
